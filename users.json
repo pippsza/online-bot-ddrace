@@ -1,12 +1,15 @@
 [
-  {
-    "user_id": 1256707116,
-    "name": "pippsza",
-    "friends": ["penis", "sex"]
-  },
-  {
-    "user_id": 1696707611,
-    "name": "PoZiTiV",
-    "friends": []
-  }
+    {
+        "user_id": 1256707116,
+        "name": "pippsza",
+        "friends": [
+            "\u0444\u044b\u0432\u0444\u044b\u0432",
+            "dasdasd"
+        ]
+    },
+    {
+        "user_id": 1696707611,
+        "name": "PoZiTiV",
+        "friends": []
+    }
 ]
