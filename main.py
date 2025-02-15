@@ -2,6 +2,7 @@ import telebot
 import json
 import requests
 from telebot import types
+# import ddapi
 
 TOKEN = '7794487649:AAErzWjY2HSwoelauu1vstH7MXYzpn_24iQ'
 url = 'https://ddnet.org/releases/maps.json'
@@ -65,7 +66,6 @@ def handle_text(message):
 
     bot.send_message(
         message.chat.id, f"Is your in-game name correct?: '{player_name}'", reply_markup=keyboard)
-
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("confirm_"))
@@ -154,7 +154,9 @@ def button_devs(call):
          🔹 Or just ask something them :D """,
         reply_markup=markup
     )
-# Обработчик отслеживания игроков 
+# Обработчик отслеживания игроков
+
+
 @bot.callback_query_handler(func=lambda call: call.data == 'start_track')
 def start_track(call):
     markup = telebot.types.InlineKeyboardMarkup()
@@ -170,7 +172,7 @@ def start_track(call):
     bot.answer_callback_query(call.id, "Players tracking has started.")
 
 
-# Кнопка друзей 
+# Кнопка друзей
 @bot.callback_query_handler(func=lambda call: call.data == 'friend_list')
 def friend_list(call):
     markup = telebot.types.InlineKeyboardMarkup()
@@ -178,7 +180,8 @@ def friend_list(call):
         text="🔸 Add a new friend 🔸", callback_data='add_new_friend')
     button_delete_friend = telebot.types.InlineKeyboardButton(
         text="🔹 Delete some friend 🔹", callback_data='delete_friend')
-    button_cancel = telebot.types.InlineKeyboardButton(text="❌Cancel❌", callback_data='cancel')
+    button_cancel = telebot.types.InlineKeyboardButton(
+        text="❌Cancel❌", callback_data='cancel')
     markup.row(button_add_friend)
     markup.add(button_delete_friend)
     markup.add(button_cancel)
@@ -188,7 +191,8 @@ def friend_list(call):
     users = load_users()
 
     # Находим текущего пользователя
-    current_user = next((user for user in users if user["user_id"] == user_id), None)
+    current_user = next(
+        (user for user in users if user["user_id"] == user_id), None)
 
     if current_user and current_user["friends"]:
         # Преобразуем список друзей в строку
@@ -196,20 +200,23 @@ def friend_list(call):
     bot.edit_message_text(
         chat_id=call.message.chat.id,
         message_id=call.message.message_id,
-        text=f"""Your friends: 
+        text=f"""Your friends:
          {friends_string}
         """,
         reply_markup=markup
     )
     bot.answer_callback_query(call.id, "Players tracking has started.")
 
-# Добаление друзей 
+# Добаление друзей
+
+
 @bot.callback_query_handler(func=lambda call: call.data == 'add_new_friend')
 def add_new_friend(call):
-    user_id = call.from_user.id  # ID пользователя, который нажал кнопку
+    user_id = call.from_user.id  # ID пользователя
     markup = types.InlineKeyboardMarkup()
+
     button_cancel = types.InlineKeyboardButton(
-        text="❌Cancel❌", callback_data='cancel')
+        text="❌ Cancel ❌", callback_data='cancel_friend_input')
     markup.row(button_cancel)
 
     bot.edit_message_text(
@@ -223,8 +230,13 @@ def add_new_friend(call):
     bot.register_next_step_handler(call.message, process_friend_name)
 
 
+@bot.callback_query_handler(func=lambda call: call.data == 'cancel_friend_input')
+def cancel_friend_input(call):
+    bot.send_message(call.message.chat.id, "❌ Friend adding was canceled.")
+    main_menu(call.message)  # Возвращаем в главное меню
 
-# Обработчик вводы ника друга 
+
+# Обработчик вводы ника друга
 def process_friend_name(message):
     user_id = message.from_user.id  # ID текущего пользователя
     friend_name = message.text.strip()  # Имя друга, введённое пользователем
@@ -233,25 +245,31 @@ def process_friend_name(message):
     users = load_users()
 
     # Ищем текущего пользователя в базе данных
-    current_user = next((user for user in users if user["user_id"] == user_id), None)
+    current_user = next(
+        (user for user in users if user["user_id"] == user_id), None)
 
     if current_user:
         # Проверяем, есть ли друг уже в списке
         if friend_name in current_user["friends"]:
-            bot.send_message(message.chat.id, f"'{friend_name}' is already in your friends list!")
+            bot.send_message(message.chat.id, f"'{
+                             friend_name}' is already in your friends list!")
         else:
             # Добавляем друга в список
             current_user["friends"].append(friend_name)
             save_users(users)  # Сохраняем изменения в JSON
-            bot.send_message(message.chat.id, f"✅ Friend '{friend_name}' added successfully!")
+            bot.send_message(message.chat.id, f"✅ Friend '{
+                             friend_name}' added successfully!")
     else:
         # Если пользователя нет в базе, уведомляем его
-        bot.send_message(message.chat.id, "❌ You are not registered yet. Use /start to register.")
+        bot.send_message(
+            message.chat.id, "❌ You are not registered yet. Use /start to register.")
 
     # Возвращаем пользователя в главное меню
     main_menu(message)
 
-# Обработка удаления друзей 
+# Обработка удаления друзей
+
+
 @bot.callback_query_handler(func=lambda call: call.data == 'delete_friend')
 def delete_friend(call):
     user_id = call.from_user.id  # ID пользователя, нажавшего кнопку
@@ -260,7 +278,8 @@ def delete_friend(call):
     users = load_users()
 
     # Находим текущего пользователя
-    current_user = next((user for user in users if user["user_id"] == user_id), None)
+    current_user = next(
+        (user for user in users if user["user_id"] == user_id), None)
 
     if current_user and current_user["friends"]:
         # Генерируем кнопки с именами друзей
@@ -282,28 +301,35 @@ def delete_friend(call):
             reply_markup=markup
         )
     else:
-        bot.send_message(call.message.chat.id, "❌ You don't have any friends to remove.")
+        bot.send_message(call.message.chat.id,
+                         "❌ You don't have any friends to remove.")
 
-# Обработка выбора друга для удаления 
+# Обработка выбора друга для удаления
+
+
 @bot.callback_query_handler(func=lambda call: call.data.startswith("remove_friend_"))
 def remove_friend(call):
     user_id = call.from_user.id  # ID пользователя, нажавшего кнопку
-    friend_name = call.data.split("remove_friend_")[1]  # Имя друга из callback_data
+    friend_name = call.data.split("remove_friend_")[
+        1]  # Имя друга из callback_data
 
     # Загружаем список пользователей из JSON
     users = load_users()
 
     # Находим текущего пользователя
-    current_user = next((user for user in users if user["user_id"] == user_id), None)
+    current_user = next(
+        (user for user in users if user["user_id"] == user_id), None)
 
     if current_user and friend_name in current_user["friends"]:
         # Удаляем друга из списка
         current_user["friends"].remove(friend_name)
         save_users(users)  # Сохраняем изменения в JSON
 
-        bot.send_message(call.message.chat.id, f"✅ Friend '{friend_name}' was removed successfully!")
+        bot.send_message(call.message.chat.id, f"✅ Friend '{
+                         friend_name}' was removed successfully!")
     else:
-        bot.send_message(call.message.chat.id, f"❌ Friend '{friend_name}' not found in your list.")
+        bot.send_message(call.message.chat.id, f"❌ Friend '{
+                         friend_name}' not found in your list.")
 
     # Возвращаем пользователя в главное меню
     main_menu(call.message)
