@@ -1,31 +1,37 @@
 import asyncio
-from ddapi import DDnetApi, DDPlayer
+from ddapi import DDnetApi
+
+# Массив имен игроков для поиска
+players_to_find = ["nameless tee", "pippsza"]  # Пример списка игроков
 
 
-async def check_player_on_server(nickname: str):
-    # Создаем объект для работы с API
-    obj = DDnetApi()
+async def fetch_server_info():
+    api = DDnetApi()
+    server_info = await api.master()
 
-    # Получаем список всех игроков на сервере
-    server_info = await obj.query()
+    if server_info and hasattr(server_info, 'servers'):
+        for player_name_to_find in players_to_find:  # Перебираем всех игроков из списка
+            found = False  # Флаг для проверки наличия игрока
+            for server in server_info.servers:
+                for client in server.info.clients:
+                    if client.name.lower() == player_name_to_find.lower():  # Сравниваем с именем игрока
+                        found = True
+                        print(
+                            f"Игрок {client.name} найден на сервере: {server.info.name}")
+                        print(f"Карта: {server.info.map.name}")
+                        print(f"Статус: {'AFK' if client.afk else 'Active'}")
+                        break  # Выход из цикла, так как игрок найден
 
-    # Перебираем всех игроков на сервере
-    player_found = False
-    for player in server_info['data']:
-        if player.name.lower() == nickname.lower():  # Сравниваем имена игроков (регистр не важен)
-            player_found = True
-            print(f"Player {nickname} found with {player.points} points")
-            break
+                if found:
+                    break  # Если игрок найден, выходим из внешнего цикла
 
-    # Если игрок не найден
-    if not player_found:
-        print(f"Player {nickname} not found on the server.")
+            if not found:
+                print(f"Игрок {player_name_to_find} не найден на сервере.")
 
-    # Закрываем соединение
-    await obj.close()
+    else:
+        print("Не удалось получить информацию о серверах.")
 
-# Вводим имя игрока, которого ищем
-nickname_to_check = "Cor"  # Замените на нужный ник игрока
+    await api.close()  # Закрываем соединение
 
-# Запуск асинхронной функции
-asyncio.run(check_player_on_server(nickname_to_check))
+if __name__ == "__main__":
+    asyncio.run(fetch_server_info())
