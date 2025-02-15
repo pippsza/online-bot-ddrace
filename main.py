@@ -2,7 +2,7 @@ import telebot
 import json
 import requests
 from telebot import types
-# import ddapi
+from ddapi import DDnetApi
 
 TOKEN = '7794487649:AAErzWjY2HSwoelauu1vstH7MXYzpn_24iQ'
 url = 'https://ddnet.org/releases/maps.json'
