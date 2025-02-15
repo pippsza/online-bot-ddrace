@@ -110,6 +110,13 @@ def confirm_nick(call):
     bot.delete_message(call.message.chat.id, call.message.message_id)
     main_menu(call.message)
 
+# кнопка меню
+
+
+@bot.message_handler(func=lambda message: message.text == "🧩 Menu 🧩")
+def menu_handler(message):
+    main_menu(message)
+
 # Главное меню
 
 
