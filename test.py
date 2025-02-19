@@ -11,8 +11,8 @@ previous_groups = {'online': [], 'afk': [], 'offline': []}
 
 async def fetch_server_info():
     api = DDnetApi()
-
     while True:
+        print('cycle')
         server_info = await api.master()
 
         online_players = []
@@ -26,7 +26,7 @@ async def fetch_server_info():
                 player_status = None  # Переменная для текущего статуса игрока
                 for server in server_info.servers:
                     for client in server.info.clients:
-                        if client.name.lower() == player_name_to_find.lower():  # Сравниваем с именем игрока
+                        if client.name == player_name_to_find:  # Сравниваем с именем игрока
                             found = True
                             player_status = 'AFK' if client.afk else 'Active'
                             # Добавляем игрока в соответствующую категорию
