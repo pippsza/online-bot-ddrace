@@ -1,15 +1,13 @@
 import asyncio
 from ddapi import DDnetApi
 
-# Массив имен игроков для поиска
+# Массив имен игроков для поиска (это же и список друзей)
 players_to_find = ["nameless tee", "pippsza"]  # Пример списка игроков
 
-# Словарь для хранения состояния игроков
-current_status = {player: None for player in players_to_find}
-previous_groups = {'online': [], 'afk': [], 'offline': []}
-
-# Пример списка друзей
-friends_list = ["nameless tee", "pippsza"]  # Ваш список друзей
+# Словари для хранения состояний игроков
+previous_online_players = set()
+previous_afk_players = set()
+previous_offline_players = set()
 
 async def fetch_server_info():
     api = DDnetApi()
@@ -18,9 +16,9 @@ async def fetch_server_info():
             print('Запуск цикла...')
             server_info = await api.master()
 
-            online_players = []
-            afk_players = []
-            offline_players = []
+            online_players = set()
+            afk_players = set()
+            offline_players = set()
 
             if server_info and hasattr(server_info, 'servers'):
                 # Перебираем все серверы
@@ -35,30 +33,36 @@ async def fetch_server_info():
                         afk_status = client.afk
                         player_details = f'{player_name} (AFK: {afk_status})'
 
-                        # Проверяем, является ли игрок в списке друзей
-                        if player_name in friends_list:
-                            if player_name in players_to_find:
-                                if afk_status:
-                                    afk_players.append((player_name, game_type, server_name, map_name))
-                                else:
-                                    online_players.append((player_name, game_type, server_name, map_name))
+                        # Проверяем, является ли игрок в списке для поиска
+                        if player_name in players_to_find:
+                            if afk_status:
+                                afk_players.add((player_name, game_type, server_name, map_name))
                             else:
-                                offline_players.append((player_name, game_type, server_name, map_name))
+                                online_players.add((player_name, game_type, server_name, map_name))
 
-            # Создаем вывод с учетом всех игроков
-            print("Игроки онлайн:")
-            for player, game_type, server, map_name in online_players:
-                print(f"{player} - {game_type}, {server}, {map_name}")
+            # Проверяем, были ли изменения в состояниях
+            if online_players != previous_online_players:
+                print("Игроки онлайн:")
+                for player, game_type, server, map_name in online_players:
+                    print(f"{player} - {game_type}, {server}, {map_name}")
+                previous_online_players.clear()
+                previous_online_players.update(online_players)
 
-            print("\nИгроки в AFK:")
-            for player, game_type, server, map_name in afk_players:
-                print(f"{player} - {game_type}, {server}, {map_name}")
+            if afk_players != previous_afk_players:
+                print("\nИгроки в AFK:")
+                for player, game_type, server, map_name in afk_players:
+                    print(f"{player} - {game_type}, {server}, {map_name}")
+                previous_afk_players.clear()
+                previous_afk_players.update(afk_players)
 
-            # Для оффлайн игроков из списка друзей, которых нет на серверах
-            print("\nИгроки оффлайн:")
-            for player in players_to_find:
-                if player not in [p[0] for p in online_players + afk_players]:
-                    print(player)
+            # Для оффлайн игроков из списка, которых нет на серверах
+            if offline_players != previous_offline_players:
+                print("\nИгроки оффлайн:")
+                for player in players_to_find:
+                    if player not in [p[0] for p in online_players + afk_players]:
+                        print(player)
+                previous_offline_players.clear()
+                previous_offline_players.update(offline_players)
 
         except Exception as e:
             print(f"Ошибка при получении данных: {e}")
