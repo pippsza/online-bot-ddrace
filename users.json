@@ -1,18 +1,17 @@
 [
-    {
-        "user_id": 1696707611,
-        "name": "PoZiTiV",
-        "friends": []
-    },
-    {
-        "user_id": 1256707116,
-        "name": "dasd",
-        "friends": [
-            "dasd",
-            "свфів",
-            "sosali?",
-            "dsad",
-            "nameless tee"
-        ]
-    }
+  {
+    "user_id": 1696707611,
+    "name": "PoZiTiV",
+    "friends": []
+  },
+  {
+    "user_id": 1256707116,
+    "name": "dasd",
+    "friends": ["dasd", "свфів", "sosali?", "dsad", "nameless tee"]
+  },
+  {
+    "user_id": 1551312767,
+    "name": "penis",
+    "friends": ["pippsza"]
+  }
 ]
