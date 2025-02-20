@@ -13,12 +13,11 @@
   только если изменился статус именно его друзей.
   
   Вывод информации оформлен в виде «таблицы»: для онлайн и AFK игроков поля (игрок, режим, сервер, карта)
-  разделяются вертикальными палочками («|»), а между записями выводится строка разделения из символов «-».
-  Между группами (онлайн, AFK, оффлайн) выводится строка из символов «=».
+  разделяются вертикальными палочками («|»). Для каждой записи над строкой с данными выводится строка разделения
+  из 69 символов "-", а между группами (онлайн, AFK, оффлайн) – строка из 69 символов "=".
   
   В каждом сообщении с активностью присутствует кнопка Cancel, которая останавливает отслеживание и возвращает
-  пользователя в главное меню. При входе в главное меню (через команду /start, интерактивную кнопку или кнопку Cancel)
-  отслеживание для данного пользователя также прекращается.
+  пользователя в главное меню.
   
 Используемые библиотеки:
   - telebot: для работы с Telegram Bot API
@@ -167,14 +166,14 @@ async def fetch_server_info(user_id):
                 afk_names = {p[0] for p in afk_players}
                 offline_players = set(friend for friend in players_to_find if friend not in online_names and friend not in afk_names)
 
-                # Форматирование секции онлайн игроков (с таблицей с разделением вертикальными палочками)
+                # Форматирование секции онлайн игроков
                 if online_players != user_prev_online[user_id]:
                     section = "🟢 Online players:\n"
                     for p in online_players:
                         player, game_type, server, map_name = p
-                        line = f"{player} | {game_type} | {server} | {map_name}"
-                        section += line + "\n" + "-" * 69 + "\n"
-                    section += "=" * 30 + "\n"
+                        line = f"❇️  {player} | {game_type} | {server} | {map_name}  ❇️"
+                        section += "-" * 69 + "\n" + line + "\n"
+                    section += "=" * 39 + "\n"
                     message_parts.append(section)
                     changed = True
 
@@ -183,9 +182,9 @@ async def fetch_server_info(user_id):
                     section = "💤 AFK players:\n"
                     for p in afk_players:
                         player, game_type, server, map_name = p
-                        line = f"{player} | {game_type} | {server} | {map_name}"
-                        section += line + "\n" + "-" * 30 + "\n"
-                    section += "=" * 30 + "\n"
+                        line = f"😴  {player} | {game_type} | {server} | {map_name}  😴"
+                        section += "-" * 69 + "\n" + line + "\n"
+                    section += "=" * 39 + "\n"
                     message_parts.append(section)
                     changed = True
 
@@ -193,13 +192,12 @@ async def fetch_server_info(user_id):
                 if offline_players != user_prev_offline[user_id]:
                     section = "💢 Offline players:\n"
                     for friend in offline_players:
-                        line = f"{friend}"
-                        section += line + "\n" + "-" * 30 + "\n"
-                    section += "=" * 30 + "\n"
+                        line = f"⛔  {friend}  ⛔"
+                        section += "-" * 69 + "\n" + line + "\n"
+                    section += "=" * 39 + "\n"
                     message_parts.append(section)
                     changed = True
 
-                # Если изменения произошли, отправляем сообщение
                 if changed:
                     players_info = "\n".join(message_parts)
                     # Обновляем сохранённое состояние
@@ -207,7 +205,6 @@ async def fetch_server_info(user_id):
                     user_prev_afk[user_id] = afk_players.copy()
                     user_prev_offline[user_id] = offline_players.copy()
 
-                    # Кнопка Cancel для прекращения отслеживания
                     markup = types.InlineKeyboardMarkup()
                     button_cancel = types.InlineKeyboardButton(text="❌ Cancel ❌", callback_data="cancel")
                     markup.add(button_cancel)
@@ -230,7 +227,6 @@ async def fetch_server_info(user_id):
 @bot.message_handler(commands=['start'])
 def privet(message):
     user_id_local = message.from_user.id
-    # При входе в /start останавливаем отслеживание (если запущено)
     stop_tracking(user_id_local)
     waiting_for_friend.add(user_id_local)
     bot.send_message(
@@ -289,9 +285,6 @@ def menu_handler(message):
     main_menu(message)
 
 def main_menu(context):
-    """
-    Отображает главное меню и останавливает отслеживание для данного пользователя.
-    """
     user_id_local = None
     if isinstance(context, types.Message):
         user_id_local = context.from_user.id
@@ -319,12 +312,10 @@ def main_menu(context):
                               reply_markup=markup)
         bot.answer_callback_query(context.id, "Returning to main menu.")
 
-# ===================================== Обработчик кнопки отслеживания =====================================
 @bot.callback_query_handler(func=lambda call: call.data == 'start_track')
 def start_track(call):
     user_id_local = call.from_user.id
-    stop_tracking(user_id_local)  # Перед запуском отслеживания убеждаемся, что предыдущая задача отменена
-
+    stop_tracking(user_id_local)
     markup = types.InlineKeyboardMarkup()
     button_cancel = types.InlineKeyboardButton(text="❌ Cancel ❌", callback_data="cancel")
     markup.row(button_cancel)
@@ -333,19 +324,15 @@ def start_track(call):
                           text="Players tracking has started...",
                           reply_markup=markup)
     bot.answer_callback_query(call.id, "Players tracking has started.")
-
-    # Запускаем задачу отслеживания для данного пользователя и сохраняем Future
     future = asyncio.run_coroutine_threadsafe(fetch_server_info(user_id_local), global_loop)
     tracking_tasks[user_id_local] = future
 
-# ===================================== Обработчик кнопки "Cancel" =====================================
 @bot.callback_query_handler(func=lambda call: call.data == 'cancel')
 def cancel_action(call):
     user_id_local = call.from_user.id
     stop_tracking(user_id_local)
     main_menu(call)
 
-# ===================================== Обработчик списка друзей =====================================
 @bot.callback_query_handler(func=lambda call: call.data == 'friend_list')
 def friend_list(call):
     markup = types.InlineKeyboardMarkup()
@@ -369,16 +356,13 @@ def friend_list(call):
                           reply_markup=markup)
     bot.answer_callback_query(call.id, "Here is your friends list.")
 
-# ===================================== Обработчик добавления нового друга =====================================
 @bot.callback_query_handler(func=lambda call: call.data == 'add_new_friend')
 def add_new_friend(call):
     user_id_local = call.from_user.id
     waiting_for_friend.add(user_id_local)
-
     markup = types.InlineKeyboardMarkup()
     button_cancel = types.InlineKeyboardButton(text="❌ Cancel ❌", callback_data='cancel_friend_input')
     markup.row(button_cancel)
-
     bot.edit_message_text(chat_id=call.message.chat.id,
                           message_id=call.message.message_id,
                           text="✅ Please write your friend's name in the chat.",
@@ -398,7 +382,6 @@ def process_friend_name(message):
         return
     waiting_for_friend.discard(user_id_local)
     friend_name = message.text.strip()
-
     users = load_users()
     current_user = next((user for user in users if user["user_id"] == user_id_local), None)
     if current_user:
@@ -412,7 +395,6 @@ def process_friend_name(message):
         bot.send_message(message.chat.id, "❌ You are not registered yet. Use /start to register.")
     main_menu(message)
 
-# ===================================== Обработчик удаления друга =====================================
 @bot.callback_query_handler(func=lambda call: call.data == 'delete_friend')
 def delete_friend(call):
     user_id_local = call.from_user.id
@@ -432,12 +414,10 @@ def delete_friend(call):
     else:
         bot.send_message(call.message.chat.id, "❌ You don't have any friends to remove.")
 
-# ===================================== Обработчик удаления выбранного друга =====================================
 @bot.callback_query_handler(func=lambda call: call.data.startswith("remove_friend_"))
 def remove_friend(call):
     user_id_local = call.from_user.id
     friend_name = call.data.split("remove_friend_")[1]
-
     users = load_users()
     current_user = next((user for user in users if user["user_id"] == user_id_local), None)
     if current_user and friend_name in current_user.get("friends", []):
@@ -448,7 +428,6 @@ def remove_friend(call):
         bot.send_message(call.message.chat.id, f"❌ Friend '{friend_name}' not found in your list.")
     main_menu(call.message)
 
-# ===================================== Обработчик кнопок "Developers" и "Designers" =====================================
 @bot.callback_query_handler(func=lambda call: call.data == 'button_devs')
 def button_devs(call):
     markup = types.InlineKeyboardMarkup()
@@ -490,7 +469,6 @@ def devs(call):
                           reply_markup=markup)
     bot.answer_callback_query(call.id, "Subscribe on pippsza!")
 
-# ===================================== Обработчик отмены ввода ника =====================================
 @bot.callback_query_handler(func=lambda call: call.data == 'cancel_name')
 def cancel_action(call):
     user_id_local = call.from_user.id
@@ -500,26 +478,13 @@ def cancel_action(call):
     waiting_for_friend.add(user_id_local)
     bot.register_next_step_handler(call.message, handle_text)
 
-# ===================================== Дополнительные функции и отладка =====================================
 def debug_print(message):
-    """Выводит отладочные сообщения с временной меткой."""
     from datetime import datetime
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {message}")
 
-# ===================================== Главный блок запуска =====================================
 if __name__ == '__main__':
     debug_print("Бот запускается...")
     try:
         bot.polling(none_stop=True)
     except Exception as main_e:
         debug_print(f"Ошибка в основном цикле polling: {main_e}")
-
-# ===================================== Завершающие комментарии =====================================
-# Этот код содержит более 500 строк, включает подробные комментарии, отладочные сообщения,
-# механизм сохранения состояния каждого пользователя, форматированный вывод (с вертикальными палочками
-# для разделения полей и строками разделения между записями), а также кнопку Cancel, которая останавливает
-# отслеживание и возвращает пользователя в главное меню.
-#
-# Если у вас возникнут вопросы или пожелания, пишите в поддержку.
-#
-# Конец файла.
