@@ -140,8 +140,12 @@ async def fetch_server_info(user_id):
             changed = False
 
             try:
-                print(f"[DEBUG] Пользователь {user_id}: запущен цикл получения данных с сервера DDNET...")
+                users = load_users()
+                current_user = next((user for user in users if user["user_id"] == user_id), None)
+                username = current_user.get("name", "Unknown") if current_user else "Unknown"
+                print(f"[DEBUG] Пользователь {username} (ID: {user_id}): запущен цикл получения данных с сервера DDNET...")
                 server_info = await api.master()
+
 
                 online_players = set()
                 afk_players = set()
@@ -167,36 +171,44 @@ async def fetch_server_info(user_id):
                 offline_players = set(friend for friend in players_to_find if friend not in online_names and friend not in afk_names)
 
                 # Форматирование секции онлайн игроков
+                                # Обновляем состояние и формируем секцию онлайн игроков, если набор не пустой
                 if online_players != user_prev_online[user_id]:
-                    section = "🟢 Online players:\n"
-                    for p in online_players:
-                        player, game_type, server, map_name = p
-                        line = f"❇️  {player} | {game_type} | {server} | {map_name}  ❇️"
-                        section += "-" * 69 + "\n" + line + "\n"
-                    section += "=" * 39 + "\n"
-                    message_parts.append(section)
-                    changed = True
+                    user_prev_online[user_id] = online_players.copy()
+                    if online_players:
+                        section = "🟢 Online players:\n"
+                        for p in online_players:
+                            player, game_type, server, map_name = p
+                            line = f"❇️  {player} | {game_type} | {server} | {map_name}  ❇️"
+                            section += "-" * 69 + "\n" + line + "\n"
+                        section += "=" * 35 + "\n"
+                        message_parts.append(section)
+                        changed = True
 
-                # Форматирование секции AFK игроков
+                # Обновляем состояние и формируем секцию AFK игроков, если набор не пустой
                 if afk_players != user_prev_afk[user_id]:
-                    section = "💤 AFK players:\n"
-                    for p in afk_players:
-                        player, game_type, server, map_name = p
-                        line = f"😴  {player} | {game_type} | {server} | {map_name}  😴"
-                        section += "-" * 69 + "\n" + line + "\n"
-                    section += "=" * 39 + "\n"
-                    message_parts.append(section)
-                    changed = True
+                    user_prev_afk[user_id] = afk_players.copy()
+                    if afk_players:
+                        section = "💤 AFK players:\n"
+                        for p in afk_players:
+                            player, game_type, server, map_name = p
+                            line = f"😴  {player} | {game_type} | {server} | {map_name}  😴"
+                            section += "-" * 69 + "\n" + line + "\n"
+                        section += "=" * 35 + "\n"
+                        message_parts.append(section)
+                        changed = True
 
-                # Форматирование секции оффлайн игроков
+                # Обновляем состояние и формируем секцию оффлайн игроков, если набор не пустой
                 if offline_players != user_prev_offline[user_id]:
-                    section = "💢 Offline players:\n"
-                    for friend in offline_players:
-                        line = f"⛔  {friend}  ⛔"
-                        section += "-" * 69 + "\n" + line + "\n"
-                    section += "=" * 39 + "\n"
-                    message_parts.append(section)
-                    changed = True
+                    user_prev_offline[user_id] = offline_players.copy()
+                    if offline_players:
+                        section = "💢 Offline players:\n"
+                        for friend in offline_players:
+                            line = f"⛔  {friend}  ⛔"
+                            section += "-" * 69 + "\n" + line + "\n"
+                        section += "=" * 35 + "\n"
+                        message_parts.append(section)
+                        changed = True
+
 
                 if changed:
                     players_info = "\n".join(message_parts)
