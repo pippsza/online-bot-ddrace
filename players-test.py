@@ -16,8 +16,10 @@
   разделяются вертикальными палочками («|»). Для каждой записи над строкой с данными выводится строка разделения
   из 69 символов "-", а между группами (онлайн, AFK, оффлайн) – строка из 69 символов "=".
   
-  В каждом сообщении с активностью присутствует кнопка Cancel, которая останавливает отслеживание и возвращает
-  пользователя в главное меню.
+  Если итоговое сообщение превышает лимит (около 4096 символов), оно разбивается на несколько сообщений
+  так, чтобы один «блок» (то есть заголовок или данные по конкретному игроку) не был разделён между сообщениями.
+  
+  В каждом сообщении присутствует кнопка Cancel, позволяющая остановить отслеживание и вернуться в главное меню.
   
 Используемые библиотеки:
   - telebot: для работы с Telegram Bot API
@@ -81,9 +83,7 @@ def load_users():
     try:
         with open(USERS_FILE, "r", encoding="utf-8") as file:
             return json.load(file)
-    except FileNotFoundError:
-        return []
-    except json.JSONDecodeError:
+    except (FileNotFoundError, json.JSONDecodeError):
         return []
 
 def save_users(users):
@@ -106,11 +106,44 @@ def stop_tracking(user_id):
         del tracking_tasks[user_id]
         print(f"[DEBUG] Tracking for user {user_id} has been cancelled.")
 
+# ===================================== Функция для отправки длинных сообщений =====================================
+def send_message_chunks(chat_id, blocks, reply_markup):
+    """
+    Принимает список блоков (каждый блок – целая строка или часть информации, например, данные об одном игроке)
+    и собирает их в сообщения, не превышающие MAX_LENGTH. Если добавление нового блока превышает лимит,
+    текущее сообщение отправляется, а блок добавляется в следующее сообщение.
+    """
+    MAX_LENGTH = 4096
+    messages = []
+    current_message = ""
+    for block in blocks:
+        if len(current_message) + len(block) > MAX_LENGTH:
+            if current_message:
+                messages.append(current_message)
+                current_message = block
+            else:
+                # Если один блок превышает лимит (маловероятно), отправляем его как есть
+                messages.append(block)
+                current_message = ""
+        else:
+            current_message += block
+    if current_message:
+        messages.append(current_message)
+
+    # Отправляем все сообщения с переданной клавиатурой (markup)
+    for msg in messages:
+        try:
+            bot.send_message(chat_id, msg, reply_markup=reply_markup)
+        except Exception as e:
+            print(f"[DEBUG] Ошибка при отправке сообщения: {e}")
+
 # ===================================== Асинхронная функция отслеживания =====================================
 async def fetch_server_info(user_id):
     """
-    Асинхронная функция, периодически запрашивающая информацию с серверов DDNET
-    и отправляющая обновлённое сообщение пользователю, если изменилось состояние его друзей.
+    Асинхронная функция, периодически запрашивающая информацию с серверов DDNET и отправляющая
+    обновлённую информацию пользователю. Данные об онлайн, AFK и оффлайн игроках собираются в один
+    текст. Если итоговый текст превышает лимит, он разбивается на сообщения по целым блокам (то есть данные
+    по одному игроку не будут разделены между сообщениями).
     
     Аргументы:
       user_id: Telegram ID пользователя, для которого осуществляется отслеживание.
@@ -136,7 +169,7 @@ async def fetch_server_info(user_id):
 
     try:
         while True:
-            message_parts = []
+            blocks = []  # Список блоков, которые потом будут объединены в сообщения
             changed = False
 
             try:
@@ -145,7 +178,6 @@ async def fetch_server_info(user_id):
                 username = current_user.get("name", "Unknown") if current_user else "Unknown"
                 print(f"[DEBUG] Пользователь {username} (ID: {user_id}): запущен цикл получения данных с сервера DDNET...")
                 server_info = await api.master()
-
 
                 online_players = set()
                 afk_players = set()
@@ -170,62 +202,52 @@ async def fetch_server_info(user_id):
                 afk_names = {p[0] for p in afk_players}
                 offline_players = set(friend for friend in players_to_find if friend not in online_names and friend not in afk_names)
 
-                # Форматирование секции онлайн игроков
-                                # Обновляем состояние и формируем секцию онлайн игроков, если набор не пустой
+                # Если изменилось состояние онлайн игроков
                 if online_players != user_prev_online[user_id]:
-                    user_prev_online[user_id] = online_players.copy()
+                    changed = True
                     if online_players:
-                        section = "🟢 Online players:\n"
+                        blocks.append("🟢 Online players:\n")
                         for p in online_players:
                             player, game_type, server, map_name = p
-                            line = f"❇️  {player} | {game_type} | {server} | {map_name}  ❇️"
-                            section += "-" * 69 + "\n" + line + "\n"
-                        section += "=" * 35 + "\n"
-                        message_parts.append(section)
-                        changed = True
+                            # Каждый игрок – отдельный блок, предваряем разделительной линией
+                            blocks.append("-" * 69 + "\n")
+                            blocks.append(f"❇️  {player} | {game_type} | {server} | {map_name}  ❇️\n")
+                        blocks.append("=" * 35 + "\n")
 
-                # Обновляем состояние и формируем секцию AFK игроков, если набор не пустой
+                # Если изменилось состояние AFK игроков
                 if afk_players != user_prev_afk[user_id]:
-                    user_prev_afk[user_id] = afk_players.copy()
+                    changed = True
                     if afk_players:
-                        section = "💤 AFK players:\n"
+                        blocks.append("💤 AFK players:\n")
                         for p in afk_players:
                             player, game_type, server, map_name = p
-                            line = f"😴  {player} | {game_type} | {server} | {map_name}  😴"
-                            section += "-" * 69 + "\n" + line + "\n"
-                        section += "=" * 35 + "\n"
-                        message_parts.append(section)
-                        changed = True
+                            blocks.append("-" * 69 + "\n")
+                            blocks.append(f"😴  {player} | {game_type} | {server} | {map_name}  😴\n")
+                        blocks.append("=" * 35 + "\n")
 
-                # Обновляем состояние и формируем секцию оффлайн игроков, если набор не пустой
+                # Если изменилось состояние оффлайн игроков
                 if offline_players != user_prev_offline[user_id]:
-                    user_prev_offline[user_id] = offline_players.copy()
+                    changed = True
                     if offline_players:
-                        section = "💢 Offline players:\n"
+                        blocks.append("💢 Offline players:\n")
                         for friend in offline_players:
-                            line = f"⛔  {friend}  ⛔"
-                            section += "-" * 69 + "\n" + line + "\n"
-                        section += "=" * 35 + "\n"
-                        message_parts.append(section)
-                        changed = True
+                            blocks.append("-" * 69 + "\n")
+                            blocks.append(f"⛔  {friend}  ⛔\n")
+                        blocks.append("=" * 35 + "\n")
 
-
-                if changed:
-                    players_info = "\n".join(message_parts)
+                if changed and blocks:
                     # Обновляем сохранённое состояние
                     user_prev_online[user_id] = online_players.copy()
                     user_prev_afk[user_id] = afk_players.copy()
                     user_prev_offline[user_id] = offline_players.copy()
 
+                    # Клавиатура с кнопкой отмены (будет добавлена ко всем сообщениям)
                     markup = types.InlineKeyboardMarkup()
-                    button_cancel = types.InlineKeyboardButton(text="❌ Cancel ❌", callback_data="cancel")
-                    markup.add(button_cancel)
-                    try:
-                        bot.send_message(user_id, players_info, reply_markup=markup)
-                        print(f"[DEBUG] Пользователю {user_id} отправлено сообщение об изменениях:")
-                        print(players_info)
-                    except Exception as send_error:
-                        print(f"[DEBUG] Ошибка при отправке сообщения пользователю {user_id}: {send_error}")
+                    markup.add(types.InlineKeyboardButton(text="❌ Cancel ❌", callback_data="cancel"))
+                    
+                    # Отправляем сообщение, разбитое на части по целым блокам
+                    send_message_chunks(user_id, blocks, markup)
+                    print(f"[DEBUG] Пользователю {user_id} отправлено обновление состояния друзей.")
 
             except Exception as e:
                 print(f"[DEBUG] Ошибка при получении данных с сервера для пользователя {user_id}: {e}")
