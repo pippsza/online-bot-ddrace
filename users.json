@@ -1,27 +1,51 @@
 [
-  {
-    "user_id": 1696707611,
-    "name": "PoZiTiV",
-    "friends": []
-  },
-  {
-    "user_id": 1256707116,
-    "name": "dasd",
-    "friends": ["pippsza"]
-  },
-  {
-    "user_id": 1551312767,
-    "name": "penis",
-    "friends": ["pippsza"]
-  },
-  {
-    "user_id": 1168717435,
-    "name": "vvrelly",
-    "friends": ["Зай, сосала?", "pippsza", "nameless tee"]
-  },
-  {
-    "user_id": 1493105695,
-    "name": "v1Ny",
-    "friends": ["pippsza"]
-  }
+    {
+        "user_id": 1696707611,
+        "name": "PoZiTiV",
+        "friends": []
+    },
+    {
+        "user_id": 1256707116,
+        "name": "dasd",
+        "friends": [
+            "pippsza"
+        ]
+    },
+    {
+        "user_id": 1551312767,
+        "name": "penis",
+        "friends": [
+            "pippsza"
+        ]
+    },
+    {
+        "user_id": 1168717435,
+        "name": "vvrelly",
+        "friends": [
+            "Зай, сосала?",
+            "pippsza",
+            "nameless tee"
+        ]
+    },
+    {
+        "user_id": 1493105695,
+        "name": "v1Ny",
+        "friends": [
+            "pippsza"
+        ]
+    },
+    {
+        "user_id": 7107633327,
+        "name": "Shadowdreams",
+        "friends": [
+            "mindless tee"
+        ]
+    },
+    {
+        "user_id": 903844378,
+        "name": "good santa",
+        "friends": [
+            "pippsza"
+        ]
+    }
 ]
